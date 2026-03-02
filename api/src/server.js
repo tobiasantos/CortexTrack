@@ -21,7 +21,7 @@ const { weeklyComparison } = require("./controllers/goals.controller");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(corsMiddleware);
+app.use("/api", corsMiddleware);
 app.use(express.json({ limit: "5mb" }));
 
 // --- Routes ---
