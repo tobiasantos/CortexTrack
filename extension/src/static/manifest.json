@@ -24,6 +24,9 @@
     "alarms",
     "activeTab"
   ],
+  "host_permissions": [
+    "https://cortextrack-production.up.railway.app/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
