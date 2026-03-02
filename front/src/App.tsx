@@ -12,6 +12,7 @@ const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage'));
 const InsightsPage = lazy(() => import('./pages/InsightsPage'));
 const GoalsPage = lazy(() => import('./pages/GoalsPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const ActivityPage = lazy(() => import('./pages/ActivityPage'));
 
 function PageLoader() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/insights" element={<InsightsPage />} />
               <Route path="/goals" element={<GoalsPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

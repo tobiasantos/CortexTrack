@@ -71,6 +71,8 @@ async function login(req, res, next) {
   }
 }
 
+const REFRESH_GRACE_PERIOD_MS = 30_000; // 30 seconds grace for recently rotated tokens
+
 async function refresh(req, res, next) {
   try {
     const { refreshToken } = req.body;
@@ -86,12 +88,32 @@ async function refresh(req, res, next) {
     }
 
     const user = await User.findById(payload.sub);
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user) {
       return res.status(401).json({ error: "Invalid refresh token" });
+    }
+
+    // Accept current token OR recently-rotated previous token (grace period for race conditions)
+    const isCurrentToken = user.refreshToken === refreshToken;
+    const isPreviousToken =
+      user.previousRefreshToken === refreshToken &&
+      user.refreshTokenRotatedAt &&
+      Date.now() - user.refreshTokenRotatedAt.getTime() < REFRESH_GRACE_PERIOD_MS;
+
+    if (!isCurrentToken && !isPreviousToken) {
+      return res.status(401).json({ error: "Invalid refresh token" });
+    }
+
+    // If using the previous token within grace period, return the current tokens
+    // without rotating again (prevents cascading rotations)
+    if (isPreviousToken) {
+      const token = generateAccessToken(user);
+      return res.json({ token, refreshToken: user.refreshToken });
     }
 
     const token = generateAccessToken(user);
     const newRefreshToken = generateRefreshToken(user);
+    user.previousRefreshToken = user.refreshToken;
+    user.refreshTokenRotatedAt = new Date();
     user.refreshToken = newRefreshToken;
     await user.save();
 

@@ -1,6 +1,10 @@
 import { API_BASE_URL } from "./constants";
 import { storage } from "./storage";
 
+// Mutex to prevent concurrent refresh attempts (race condition with alarm + interval)
+let isRefreshing = false;
+let refreshPromise = null;
+
 export async function apiRequest(endpoint, options = {}) {
   let token = await storage.get("authToken");
 
@@ -31,9 +35,10 @@ export async function apiRequest(endpoint, options = {}) {
       }
       return retryResponse.json();
     }
-    // Refresh failed — clear auth state
-    await logout();
-    throw new Error("Session expired");
+    // Refresh failed — do NOT logout automatically.
+    // Keep tokens in storage so next sync cycle can retry.
+    // Only throw so caller knows this request failed.
+    throw new Error("Token refresh failed, will retry on next sync");
   }
 
   if (!response.ok) {
@@ -45,25 +50,47 @@ export async function apiRequest(endpoint, options = {}) {
 }
 
 async function tryRefreshToken() {
+  // If already refreshing, wait for the ongoing attempt
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
   const refreshToken = await storage.get("refreshToken");
   if (!refreshToken) return false;
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    });
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
 
-    if (!response.ok) return false;
+      if (!response.ok) {
+        // If the server explicitly says the refresh token is invalid (not a network error),
+        // clear only the access token so popup shows re-login prompt on next check.
+        // But keep refreshToken in case it was a transient server error.
+        const body = await response.json().catch(() => ({}));
+        console.warn(`[CortexTrack] Refresh failed: ${body.error || response.status}`);
+        return false;
+      }
 
-    const data = await response.json();
-    await storage.set("authToken", data.token);
-    await storage.set("refreshToken", data.refreshToken);
-    return true;
-  } catch {
-    return false;
-  }
+      const data = await response.json();
+      await storage.set("authToken", data.token);
+      await storage.set("refreshToken", data.refreshToken);
+      return true;
+    } catch (err) {
+      // Network error — don't clear anything, just fail silently
+      console.warn(`[CortexTrack] Refresh network error: ${err.message}`);
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
 export async function login(email, password) {

@@ -39,8 +39,16 @@ function handleTabChange(tab) {
 
   if (shouldIgnoreUrl(tab.url)) return;
 
+  // Same tab updated (e.g. page finished loading with real URL/title) — just update metadata
+  if (currentTab && currentTab.tabId === tab.id && currentTab.url === tab.url) {
+    if (tab.title && tab.title !== currentTab.title) {
+      currentTab.title = tab.title;
+    }
+    return;
+  }
+
   // Close previous tab event
-  if (currentTab) {
+  if (currentTab && !shouldIgnoreUrl(currentTab.url)) {
     const duration = now - currentTab.startTime;
     queueEvent({
       url: currentTab.url,
@@ -56,7 +64,7 @@ function handleTabChange(tab) {
   currentTab = {
     tabId: tab.id,
     url: tab.url,
-    title: tab.title,
+    title: tab.title || "",
     startTime: now,
     timestamp: timestamp(),
   };
@@ -64,7 +72,11 @@ function handleTabChange(tab) {
 
 function shouldIgnoreUrl(url) {
   if (!url) return true;
-  return url.startsWith("chrome://") || url.startsWith("chrome-extension://");
+  if (url.startsWith("chrome://") || url.startsWith("chrome-extension://")) return true;
+  if (url.startsWith("about:") || url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("javascript:")) return true;
+  // Only track http/https URLs
+  if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
+  return false;
 }
 
 // --- Idle Detection ---
@@ -142,8 +154,8 @@ async function syncEvents() {
   }
 
   const allEvents = (await storage.get("pendingEvents")) || [];
-  // Filter out events with empty URLs (idle_end leftovers)
-  const events = allEvents.filter((e) => e.url && e.url.length > 0);
+  // Filter out events with empty or non-http URLs
+  const events = allEvents.filter((e) => e.url && (e.url.startsWith("http://") || e.url.startsWith("https://")));
 
   if (events.length === 0) {
     // Clean up any invalid events too

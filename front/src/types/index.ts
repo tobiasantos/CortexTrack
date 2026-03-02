@@ -90,6 +90,27 @@ export interface Goal {
   target: number;
 }
 
+// --- Event Log ---
+export type EventType = 'visit' | 'tab_switch' | 'tab_close' | 'idle_start' | 'idle_end';
+
+export interface RawEvent {
+  _id: string;
+  url: string;
+  domain: string;
+  title: string;
+  eventType: EventType;
+  timestamp: string;
+  duration: number;
+  sessionId: string;
+}
+
+export interface EventLogResponse {
+  events: RawEvent[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 // --- Settings ---
 export interface SiteClassification {
   domain: string;

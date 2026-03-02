@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: { type: String, required: true },
   refreshToken: { type: String, default: null },
+  previousRefreshToken: { type: String, default: null },
+  refreshTokenRotatedAt: { type: Date, default: null },
   preferences: {
     focusWeight: { type: Number, default: 1.5 },
     siteOverrides: [

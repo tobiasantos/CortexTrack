@@ -7,11 +7,13 @@ import {
   Settings,
   Brain,
   LogOut,
+  ScrollText,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/activity', icon: ScrollText, label: 'Activity Log' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/insights', icon: Lightbulb, label: 'Insights' },
   { to: '/goals', icon: Target, label: 'Goals' },
