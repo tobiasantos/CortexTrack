@@ -4,12 +4,18 @@ const focusScoreService = require("./focusScore.service");
 
 /**
  * Get or compute a DailySummary for a user on a specific date.
- * Lazy: if the summary doesn't exist, compute it from events and cache.
+ * For today: always recompute from events (data is still arriving).
+ * For past dates: use cached summary if available.
  */
 async function getOrCompute(userId, dateStr) {
-  // Try cached summary first
-  let summary = await DailySummary.findOne({ user: userId, date: dateStr }).lean();
-  if (summary) return summary;
+  const today = new Date().toISOString().slice(0, 10);
+  const isToday = dateStr === today;
+
+  // Use cache only for past dates
+  if (!isToday) {
+    const cached = await DailySummary.findOne({ user: userId, date: dateStr }).lean();
+    if (cached) return cached;
+  }
 
   // Compute from raw events
   const features = await featureService.getDailyFeatures(userId, dateStr);
@@ -17,7 +23,7 @@ async function getOrCompute(userId, dateStr) {
 
   const focusScore = await focusScoreService.calculate(features, userId);
 
-  summary = await DailySummary.findOneAndUpdate(
+  const summary = await DailySummary.findOneAndUpdate(
     { user: userId, date: dateStr },
     {
       user: userId,

@@ -89,14 +89,8 @@ chrome.idle.onStateChanged.addListener((newState) => {
       currentTab = null;
     }
   } else if (newState === "active") {
-    queueEvent({
-      url: "",
-      title: "",
-      timestamp: timestamp(),
-      eventType: "idle_end",
-      duration: 0,
-      sessionId,
-    });
+    // idle_end: no URL needed, skip queueing to avoid API validation error
+    console.log("[CortexTrack] User returned from idle");
   }
 });
 
@@ -106,23 +100,59 @@ async function queueEvent(event) {
   const events = (await storage.get("pendingEvents")) || [];
   events.push(event);
   await storage.set("pendingEvents", events);
+  console.log(`[CortexTrack] Queued ${event.eventType}: ${event.url} (${events.length} pending)`);
 }
 
-// --- Batch Sync ---
+// --- Sync Scheduling ---
 
+// Primary: chrome.alarms (persists across SW termination)
 chrome.alarms.create("syncEvents", {
+  delayInMinutes: 1,
   periodInMinutes: SYNC_INTERVAL_MINUTES,
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
+  console.log(`[CortexTrack] Alarm fired: ${alarm.name}`);
   if (alarm.name === "syncEvents") {
     syncEvents();
   }
 });
 
+// Fallback: setInterval while SW is alive (covers cases where alarms misbehave)
+setInterval(() => {
+  console.log("[CortexTrack] Interval tick, syncing...");
+  syncEvents();
+}, SYNC_INTERVAL_MINUTES * 60 * 1000);
+
+chrome.runtime.onInstalled.addListener(() => {
+  console.log("[CortexTrack] Extension installed");
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  console.log("[CortexTrack] Browser started");
+});
+
+// --- Batch Sync ---
+
 async function syncEvents() {
-  const events = (await storage.get("pendingEvents")) || [];
-  if (events.length === 0) return;
+  const token = await storage.get("authToken");
+  if (!token) {
+    console.log("[CortexTrack] No auth token, skipping sync");
+    return;
+  }
+
+  const allEvents = (await storage.get("pendingEvents")) || [];
+  // Filter out events with empty URLs (idle_end leftovers)
+  const events = allEvents.filter((e) => e.url && e.url.length > 0);
+
+  if (events.length === 0) {
+    // Clean up any invalid events too
+    if (allEvents.length > 0) {
+      await storage.set("pendingEvents", []);
+    }
+    console.log("[CortexTrack] No events to sync");
+    return;
+  }
 
   try {
     await apiRequest("/events", {
@@ -185,10 +215,3 @@ async function getTodayEvents() {
   const today = new Date().toISOString().slice(0, 10);
   return events.filter((e) => e.timestamp && e.timestamp.startsWith(today));
 }
-
-// --- Startup ---
-
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("[CortexTrack] Extension installed");
-  storage.set("pendingEvents", []);
-});
