@@ -7,8 +7,9 @@ const focusScoreService = require("./focusScore.service");
  * For today: always recompute from events (data is still arriving).
  * For past dates: use cached summary if available.
  */
-async function getOrCompute(userId, dateStr) {
-  const today = new Date().toISOString().slice(0, 10);
+async function getOrCompute(userId, dateStr, tzOffset = 0) {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const isToday = dateStr === today;
 
   // Use cache only for past dates
@@ -18,7 +19,7 @@ async function getOrCompute(userId, dateStr) {
   }
 
   // Compute from raw events
-  const features = await featureService.getDailyFeatures(userId, dateStr);
+  const features = await featureService.getDailyFeatures(userId, dateStr, tzOffset);
   if (!features) return null;
 
   const focusScore = await focusScoreService.calculate(features, userId);

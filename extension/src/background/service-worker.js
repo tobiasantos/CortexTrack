@@ -224,6 +224,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function getTodayEvents() {
   const events = (await storage.get("pendingEvents")) || [];
-  const today = new Date().toISOString().slice(0, 10);
-  return events.filter((e) => e.timestamp && e.timestamp.startsWith(today));
+  const now = new Date();
+  // Local midnight boundaries converted to UTC ISO strings for comparison
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  return events.filter((e) => e.timestamp && e.timestamp >= startOfDay && e.timestamp < endOfDay);
 }

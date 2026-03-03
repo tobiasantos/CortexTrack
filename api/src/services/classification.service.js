@@ -1,4 +1,5 @@
 const SiteClassification = require("../models/SiteClassification");
+const Event = require("../models/Event");
 
 /**
  * Classify a domain for a given user.
@@ -46,22 +47,28 @@ async function classifyMany(domains, userId) {
 }
 
 /**
- * Get all classifications for a user (merged defaults + overrides).
+ * Get all classifications for a user based on their actually visited domains.
+ * Merges: user overrides > global defaults > "neutral" fallback.
  */
 async function getAllForUser(userId) {
-  const [globals, overrides] = await Promise.all([
+  const [globals, overrides, userDomains] = await Promise.all([
     SiteClassification.find({ user: null }),
     SiteClassification.find({ user: userId }),
+    Event.distinct("domain", { user: userId }),
   ]);
 
+  const globalMap = new Map(globals.map((g) => [g.domain, g.defaultCategory]));
+  const overrideMap = new Map(
+    overrides.filter((o) => o.userCategory).map((o) => [o.domain, o.userCategory])
+  );
+
   const merged = new Map();
-  for (const g of globals) {
-    merged.set(g.domain, { domain: g.domain, category: g.defaultCategory, isOverride: false });
-  }
-  for (const o of overrides) {
-    if (o.userCategory) {
-      merged.set(o.domain, { domain: o.domain, category: o.userCategory, isOverride: true });
-    }
+  for (const domain of userDomains) {
+    merged.set(domain, {
+      domain,
+      category: overrideMap.get(domain) || globalMap.get(domain) || "neutral",
+      isOverride: overrideMap.has(domain),
+    });
   }
 
   return [...merged.values()].sort((a, b) => a.domain.localeCompare(b.domain));

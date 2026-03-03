@@ -9,6 +9,10 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // Auto-inject timezone offset so the backend can compute correct day boundaries
+  if (config.params?.date) {
+    config.params.tz = new Date().getTimezoneOffset();
+  }
   return config;
 });
 

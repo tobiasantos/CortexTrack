@@ -36,9 +36,10 @@ async function getEventLog(req, res, next) {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const limit = Math.min(parseInt(req.query.limit) || 200, 500);
     const offset = parseInt(req.query.offset) || 0;
+    const tz = parseInt(req.query.tz) || 0;
 
-    const startOfDay = new Date(`${date}T00:00:00.000Z`);
-    const endOfDay = new Date(`${date}T23:59:59.999Z`);
+    const { dayBounds } = require("../utils/date");
+    const { start: startOfDay, end: endOfDay } = dayBounds(date, tz);
 
     const filter = {
       user: req.user.id,

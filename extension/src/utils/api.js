@@ -68,11 +68,14 @@ async function tryRefreshToken() {
       });
 
       if (!response.ok) {
-        // If the server explicitly says the refresh token is invalid (not a network error),
-        // clear only the access token so popup shows re-login prompt on next check.
-        // But keep refreshToken in case it was a transient server error.
         const body = await response.json().catch(() => ({}));
         console.warn(`[CortexTrack] Refresh failed: ${body.error || response.status}`);
+        // Server explicitly rejected the refresh token — clear auth so popup shows login
+        if (response.status === 401 || response.status === 403) {
+          await storage.remove("authToken");
+          await storage.remove("refreshToken");
+          await storage.remove("userEmail");
+        }
         return false;
       }
 

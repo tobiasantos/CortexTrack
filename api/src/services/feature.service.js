@@ -1,13 +1,16 @@
 const Event = require("../models/Event");
 const classificationService = require("./classification.service");
+const { dayBounds } = require("../utils/date");
 
 /**
  * Extract daily features for a user on a given date.
  * Returns aggregated metrics used for DailySummary and dashboard.
+ * @param {string} userId
+ * @param {string} dateStr - YYYY-MM-DD (local calendar day)
+ * @param {number} [tzOffset=0] - Client timezone offset in minutes
  */
-async function getDailyFeatures(userId, dateStr) {
-  const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+async function getDailyFeatures(userId, dateStr, tzOffset = 0) {
+  const { start: dayStart, end: dayEnd } = dayBounds(dateStr, tzOffset);
 
   const events = await Event.find({
     user: userId,
@@ -37,7 +40,9 @@ async function getDailyFeatures(userId, dateStr) {
   for (const event of visitEvents) {
     const category = categoryMap.get(event.domain) || "neutral";
     const duration = event.duration || 0;
-    const hour = new Date(event.timestamp).getUTCHours();
+    // Convert UTC timestamp to local hour using the client's timezone offset
+    const utcMs = new Date(event.timestamp).getTime();
+    const hour = new Date(utcMs - tzOffset * 60000).getUTCHours();
 
     // Category totals
     if (category === "productive") {

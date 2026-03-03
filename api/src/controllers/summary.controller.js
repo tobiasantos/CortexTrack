@@ -4,15 +4,22 @@ const Event = require("../models/Event");
 const dailySummaryService = require("../services/dailySummary.service");
 const featureService = require("../services/feature.service");
 const classificationService = require("../services/classification.service");
+const { dayBounds } = require("../utils/date");
+
+function getTz(req) {
+  return parseInt(req.query.tz) || 0;
+}
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 async function daily(req, res, next) {
   try {
     const date = req.query.date || todayStr();
-    const summary = await dailySummaryService.getOrCompute(req.user.id, date);
+    const tz = getTz(req);
+    const summary = await dailySummaryService.getOrCompute(req.user.id, date, tz);
     if (!summary) return res.json(null);
     res.json(summary);
   } catch (err) {
@@ -23,6 +30,7 @@ async function daily(req, res, next) {
 async function weekly(req, res, next) {
   try {
     const endDate = req.query.date || todayStr();
+    const tz = getTz(req);
     const end = new Date(endDate);
     const start = new Date(end);
     start.setDate(start.getDate() - 6);
@@ -33,7 +41,7 @@ async function weekly(req, res, next) {
     }
 
     const summaries = await Promise.all(
-      dates.map((date) => dailySummaryService.getOrCompute(req.user.id, date))
+      dates.map((date) => dailySummaryService.getOrCompute(req.user.id, date, tz))
     );
 
     res.json(summaries.filter(Boolean));
@@ -61,7 +69,8 @@ async function monthly(req, res, next) {
 async function timeline(req, res, next) {
   try {
     const date = req.query.date || todayStr();
-    const features = await featureService.getDailyFeatures(req.user.id, date);
+    const tz = getTz(req);
+    const features = await featureService.getDailyFeatures(req.user.id, date, tz);
     if (!features) return res.json([]);
     res.json(features.timeline);
   } catch (err) {
@@ -72,10 +81,11 @@ async function timeline(req, res, next) {
 async function topSites(req, res, next) {
   try {
     const { period = "day", date } = req.query;
+    const tz = getTz(req);
     const targetDate = date || todayStr();
 
     if (period === "day") {
-      const features = await featureService.getDailyFeatures(req.user.id, targetDate);
+      const features = await featureService.getDailyFeatures(req.user.id, targetDate, tz);
       return res.json(features ? features.topSites : []);
     }
 
@@ -85,15 +95,15 @@ async function topSites(req, res, next) {
     if (period === "week") start.setDate(start.getDate() - 6);
     else start.setDate(1); // first of month
 
-    const startDay = new Date(`${start.toISOString().slice(0, 10)}T00:00:00.000Z`);
-    const endDay = new Date(`${end.toISOString().slice(0, 10)}T23:59:59.999Z`);
+    const startBounds = dayBounds(start.toISOString().slice(0, 10), tz);
+    const endBounds = dayBounds(end.toISOString().slice(0, 10), tz);
 
     const results = await Event.aggregate([
       {
         $match: {
           user: new mongoose.Types.ObjectId(req.user.id),
           eventType: "visit",
-          timestamp: { $gte: startDay, $lte: endDay },
+          timestamp: { $gte: startBounds.start, $lte: endBounds.end },
         },
       },
       { $group: { _id: "$domain", time: { $sum: "$duration" } } },
@@ -120,10 +130,11 @@ async function topSites(req, res, next) {
 async function categories(req, res, next) {
   try {
     const { period = "day", date } = req.query;
+    const tz = getTz(req);
     const targetDate = date || todayStr();
 
     if (period === "day") {
-      const summary = await dailySummaryService.getOrCompute(req.user.id, targetDate);
+      const summary = await dailySummaryService.getOrCompute(req.user.id, targetDate, tz);
       if (!summary) return res.json({ productive: 0, neutral: 0, distraction: 0 });
       return res.json({
         productive: summary.productiveTime,
