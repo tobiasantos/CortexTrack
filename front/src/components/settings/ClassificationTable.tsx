@@ -44,7 +44,14 @@ export default function ClassificationTable({ classifications, onUpdate }: Class
             <tr className="border-b border-[var(--color-border)]">
               <th className="text-left py-2 text-[var(--color-text-muted)] font-medium">Domain</th>
               <th className="text-left py-2 text-[var(--color-text-muted)] font-medium">Category</th>
-              <th className="text-left py-2 text-[var(--color-text-muted)] font-medium">Status</th>
+              <th className="text-left py-2 text-[var(--color-text-muted)] font-medium">
+                <span className="inline-flex items-center gap-1" title="'Needs review' means this site still has the system default classification and hasn't been reviewed by you yet.">
+                  Status
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 opacity-50">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM8.94 6.94a.75.75 0 11-1.061-1.061 2.75 2.75 0 113.89 3.89.75.75 0 01-.53.22h-.06a.75.75 0 01-.75-.75v-.5a.75.75 0 011.5 0v.13a1.25 1.25 0 10-1.99-1.43zM10 15a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                  </svg>
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -76,7 +83,14 @@ export default function ClassificationTable({ classifications, onUpdate }: Class
                   </select>
                 </td>
                 <td className="py-2.5">
-                  {!c.isOverride && (
+                  {c.isOverride ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-emerald-500 font-medium">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                        <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                      </svg>
+                      Classified
+                    </span>
+                  ) : (
                     <span className="inline-flex items-center gap-1 text-xs text-amber-500 font-medium">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                         <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
