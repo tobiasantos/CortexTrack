@@ -154,8 +154,14 @@ async function syncEvents() {
   }
 
   const allEvents = (await storage.get("pendingEvents")) || [];
-  // Filter out events with empty or non-http URLs
-  const events = allEvents.filter((e) => e.url && (e.url.startsWith("http://") || e.url.startsWith("https://")));
+  // Filter out events with empty or non-http URLs and normalize URIs
+  const events = allEvents
+    .filter((e) => e.url && (e.url.startsWith("http://") || e.url.startsWith("https://")))
+    .map((e) => {
+      try { return { ...e, url: new URL(e.url).href }; }
+      catch { return null; }
+    })
+    .filter(Boolean);
 
   if (events.length === 0) {
     // Clean up any invalid events too
