@@ -33,7 +33,7 @@ const loginSchema = Joi.object({
 });
 
 const eventSchema = Joi.object({
-  url: Joi.string().uri().required(),
+  url: Joi.string().pattern(/^https?:\/\/.+/).required(),
   title: Joi.string().allow("").default(""),
   timestamp: Joi.string().isoDate().required(),
   eventType: Joi.string()
