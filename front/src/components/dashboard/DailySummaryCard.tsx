@@ -5,9 +5,19 @@ import type { DailySummary } from '../../types';
 
 interface DailySummaryCardProps {
   summary: DailySummary | null;
+  selectedDate: string;
 }
 
-export default function DailySummaryCard({ summary }: DailySummaryCardProps) {
+function formatCardTitle(dateStr: string): string {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  if (dateStr === todayStr) return "Today's Summary";
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return `Summary — ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+export default function DailySummaryCard({ summary, selectedDate }: DailySummaryCardProps) {
   if (!summary) return null;
 
   const totalTime = summary.productiveTime + summary.distractionTime + summary.neutralTime;
@@ -19,7 +29,7 @@ export default function DailySummaryCard({ summary }: DailySummaryCardProps) {
   ];
 
   return (
-    <Card title="Today's Summary">
+    <Card title={formatCardTitle(selectedDate)}>
       <div className="space-y-3">
         {rows.map(({ icon: Icon, label, value, color, dot }) => (
           <div key={label} className="flex items-center justify-between">

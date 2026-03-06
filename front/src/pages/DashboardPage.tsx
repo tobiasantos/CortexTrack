@@ -86,7 +86,7 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             <ScoreCard score={summary?.focusScore ?? null} />
-            <DailySummaryCard summary={summary} />
+            <DailySummaryCard summary={summary} selectedDate={selectedDate} />
             <CategoryDonut data={categories} />
 
             <div className="md:col-span-2 lg:col-span-3">

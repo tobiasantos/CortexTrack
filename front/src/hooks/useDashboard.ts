@@ -30,13 +30,15 @@ export function useDashboard(): DashboardData {
     setIsLoading(true);
     setError(null);
 
+    const tz = new Date().getTimezoneOffset();
+
     try {
       const [summaryRes, timelineRes, topSitesRes, categoriesRes, insightsRes] =
         await Promise.allSettled([
-          api.get(`/summary/daily`, { params: { date: selectedDate } }),
-          api.get(`/timeline`, { params: { date: selectedDate } }),
-          api.get(`/top-sites`, { params: { period: 'day', date: selectedDate } }),
-          api.get(`/categories`, { params: { period: 'day', date: selectedDate } }),
+          api.get(`/summary/daily`, { params: { date: selectedDate, tz } }),
+          api.get(`/timeline`, { params: { date: selectedDate, tz } }),
+          api.get(`/top-sites`, { params: { period: 'day', date: selectedDate, tz } }),
+          api.get(`/categories`, { params: { period: 'day', date: selectedDate, tz } }),
           api.get(`/insights`, { params: { limit: 5 } }),
         ]);
 
